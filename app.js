@@ -46,14 +46,13 @@ const getFreeVaccines = () => {
     // console.log('.')
     // console.log('.')
     // console.log('.')
-    console.log('Checked at: ', new Date().toISOString())
-    const now = new Date()
-    now.setDate(now.getDate() + 1)
-    now.setHours(0)
-    const start = new Date(now).toISOString()
-    const next = new Date()
-    next.setMonth(next.getMonth() + 2)
-    const end = new Date(next).toISOString()
+    const date = new Date()
+    console.log('Checked at: ', date.toISOString())
+    date.setDate(date.getDate() + 1)
+    date.setHours(4)
+    const start = date.toISOString()
+    date.setMonth(date.getMonth() + 2)
+    const end = date.toISOString()
     getURL(`https://booking.moh.gov.ge/Hmis/Hmis.Queue.API/api/CommonData/GetMunicipalities/${placeId}?serviceId=${serviceId}`)
         .then((res) => {
             let sumDelay = 0
@@ -150,7 +149,8 @@ const printEmptySlots = (rooms, clinic, addr, municipality) => {
         if (freeDates.length > 0) {
             freeRooms.push({
                 room: room.name,
-                dates: freeDates
+                dates: freeDates,
+                dateStr: JSON.stringify(freeDates)
             })
         }
     }
