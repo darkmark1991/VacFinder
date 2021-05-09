@@ -6,7 +6,7 @@ const yargs = require("yargs");
 const delay = 500
 
 const serviceId = "d1eef49b-00b9-4760-9525-6100c168e642";
-const securityNumber = "30188727920"
+let securityNumber = "42253319835"
 
 /* რეგიონების ID-ები */
 const regionIds = {
@@ -54,12 +54,12 @@ const getFreeVaccines = () => {
     const next = new Date()
     next.setMonth(next.getMonth() + 2)
     const end = new Date(next).toISOString()
-    getRegs(`https://booking.moh.gov.ge/Hmis/Hmis.Queue.API/api/CommonData/GetMunicipalities/${placeId}?serviceId=${serviceId}`)
+    getURL(`https://booking.moh.gov.ge/Hmis/Hmis.Queue.API/api/CommonData/GetMunicipalities/${placeId}?serviceId=${serviceId}`)
         .then((res) => {
             let sumDelay = 0
             for (let mun of res.data) {
                 setTimeout(() => {
-                    getRegs(`https://booking.moh.gov.ge/Hmis/Hmis.Queue.API/api/CommonData/GetMunicipalityBranches/${serviceId}/${mun.id}`)
+                    getURL(`https://booking.moh.gov.ge/Hmis/Hmis.Queue.API/api/CommonData/GetMunicipalityBranches/${serviceId}/${mun.id}`)
                         .then((clinics) => {
                             let count = 1
                             for (let clinic of clinics.data) {
@@ -75,75 +75,56 @@ const getFreeVaccines = () => {
                                         .then((slots) => {
                                             printEmptySlots(slots.data, clinic.name, clinic.address, clinic.municipality)
                                         })
-                                        .catch((err3) => console.error("err3"))
+                                        .catch((err3) => {
+                                            console.error("Failed to fetch slots", err3)
+                                        })
                                 }, delay * count)
                                 count++
                             }
                         })
-                        .catch((err2) => console.error("err2"))
+                        .catch((err2) => {
+                            console.error("Failed to fetch clinics")
+                        })
                 }, sumDelay)
                 sumDelay += delay * (res.data.length - 1)
             }
         })
-        .catch((err) => console.error("err"));
+        .catch((err) => {
+            console.error("Failed to fetch regions")
+            regenSecurityNumber()
+            getFreeVaccines()
+        });
 }
 
-const getRegs = async (url) => {
-    var config = {
+
+const getURL = async (url) => {
+    const config = {
         method: 'get',
         url: url,
         headers: { 
-            'accept': ' application/json, text/plain, */*', 
-            'accept-encoding': ' gzip, deflate, br', 
-            'accept-language': ' en-US,en;q=0.9,ka;q=0.8,ru;q=0.7', 
-            'authorization': 'Bearer Bearer null@null', 
-            'cache-control': ' no-cache', 
-            'cookie': ' _ga=GA1.1.430123661.1619523062; _ga_MPX1GWT6K2=GS1.1.1620462341.10.1.1620462602.0', 
-            'pragma': ' no-cache', 
-            'referer': ' https://booking.moh.gov.ge/Hmis/Hmis.Queue.Web/', 
-            'sec-ch-ua': ' " Not A;Brand";v="99", "Chromium";v="90"', 
-            'sec-ch-ua-mobile': ' ?0', 
-            'sec-fetch-dest': ' empty', 
-            'sec-fetch-mode': ' cors', 
-            'sec-fetch-site': ' same-origin', 
             'securitynumber': securityNumber, 
-            'user-agent': ' Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36'
         }
     };
 
     return axios(config)
 }
 
-const getSlots = async (payload) => {
-    var data = JSON.stringify(payload);
 
-    var config = {
-    method: 'post',
-    url: 'https://booking.moh.gov.ge/Hmis/Hmis.Queue.API/api/Booking/GetSlots',
-    headers: { 
-        'accept': ' application/json, text/plain, */*', 
-        'accept-encoding': ' gzip, deflate, br', 
-        'accept-language': ' en-US,en;q=0.9,ka;q=0.8,ru;q=0.7', 
-        'authorization': 'Bearer Bearer null@null', 
-        'cache-control': ' no-cache', 
-        'cookie': ' _ga=GA1.1.430123661.1619523062; _ga_MPX1GWT6K2=GS1.1.1620464490.11.1.1620464492.0', 
-        'pragma': ' no-cache', 
-        'referer': ' https://booking.moh.gov.ge/Hmis/Hmis.Queue.Web/', 
-        'sec-ch-ua': ' " Not A;Brand";v="99", "Chromium";v="90"', 
-        'sec-ch-ua-mobile': ' ?0', 
-        'sec-fetch-dest': ' empty', 
-        'sec-fetch-mode': ' cors', 
-        'sec-fetch-site': ' same-origin', 
-        'securitynumber': securityNumber, 
-        'user-agent': ' Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.93 Safari/537.36', 
-        'Content-Type': 'application/json'
-    },
-    data : data
+const getSlots = async (payload) => {
+    const data = JSON.stringify(payload);
+    const config = {
+        method: 'post',
+        url: 'https://booking.moh.gov.ge/Hmis/Hmis.Queue.API/api/Booking/GetSlots',
+        headers: {
+            'securitynumber': securityNumber,
+            'Content-Type': 'application/json'
+        },
+        data : data
     };
 
     return axios(config)
-
 }
+
 
 const printEmptySlots = (rooms, clinic, addr, municipality) => {
     const freeRooms = []
@@ -186,9 +167,9 @@ const printEmptySlots = (rooms, clinic, addr, municipality) => {
         beep(3)
         console.log(found)
         // console.log(util.inspect(found, false, null, true /* enable colors */))
-
     }
 }
+
 
 const printEmptySlots_bk = (rooms, clinic, addr, municipality) => {
     const free = []
@@ -213,6 +194,14 @@ const printEmptySlots_bk = (rooms, clinic, addr, municipality) => {
         free.unshift(`${municipality}, ${clinic} (${addr})`)
     }
     free.forEach(x => console.log(x))
+}
+
+
+regenSecurityNumber = () => {
+    console.log("Regenerating security number")
+    const date = new Date()
+    const multiplier = date.getFullYear() * (date.getMonth() + 1) * date.getDate()
+    securityNumber = (Math.floor(Math.random() * Math.floor(1e6)) * multiplier).toString()
 }
 
 
